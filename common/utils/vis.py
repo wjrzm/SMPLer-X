@@ -150,7 +150,8 @@ def render_mesh(img, mesh, face, cam_param, mesh_as_vertices=False):
         rot = trimesh.transformations.rotation_matrix(
         np.radians(180), [1, 0, 0])
         mesh.apply_transform(rot)
-        material = pyrender.MetallicRoughnessMaterial(metallicFactor=0.0, alphaMode='OPAQUE', baseColorFactor=(1.0, 1.0, 0.9, 1.0))
+        # material = pyrender.MetallicRoughnessMaterial(metallicFactor=0.0, alphaMode='OPAQUE', baseColorFactor=(1.0, 1.0, 0.9, 1.0))
+        material = pyrender.MetallicRoughnessMaterial(metallicFactor=0.0, alphaMode='OPAQUE', baseColorFactor=(0.45, 0.25, 0.5, 1.0))
         mesh = pyrender.Mesh.from_trimesh(mesh, material=material, smooth=False)
         scene = pyrender.Scene(ambient_light=(0.3, 0.3, 0.3))
         scene.add(mesh, 'mesh')
@@ -181,3 +182,16 @@ def render_mesh(img, mesh, face, cam_param, mesh_as_vertices=False):
         img = rgb * valid_mask + img * (1-valid_mask)
 
     return img
+
+def render_side_mesh(img, mesh, face, cam_param, mesh_as_vertices=False):
+    centroid = mesh.mean(axis=0)  # n*6890*3 -> 3
+
+    # make the centroid at the image center (the X and Y coordinates are zeros)
+    centroid[:2] = 0
+    # aroundy = cv2.Rodrigues(np.array([0, np.radians(90.), 0]))[0][np.newaxis, ...]  # 1*3*3
+    aroundy = cv2.Rodrigues(np.array([0, np.radians(-90.), 0]))[0]  # 3*3
+
+    pred_vert_arr_side = np.matmul((mesh - centroid), aroundy) + centroid
+    img_bg = np.ones_like(img) * 255
+    side_view = render_mesh(img_bg, pred_vert_arr_side, face, cam_param, mesh_as_vertices=False)
+    return side_view

@@ -90,6 +90,7 @@ output_hand_hm_shape = (16, 16, 16)
 output_face_hm_shape = (8, 8, 8)
 input_face_shape = (192, 192)
 focal = (5000, 5000)  # virtual focal lengths
+# focal = (608, 608)  # virtual focal lengths
 princpt = (input_body_shape[1] / 2, input_body_shape[0] / 2)  # virtual principal point position
 body_3d_size = 2
 hand_3d_size = 0.3

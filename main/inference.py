@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument('--demo_scene', type=str, default='all')
     parser.add_argument('--show_verts', action="store_true")
     parser.add_argument('--show_bbox', action="store_true")
+    parser.add_argument('--show_img_side', action="store_true")
     parser.add_argument('--save_mesh', action="store_true")
     parser.add_argument('--multi_person', action="store_true")
     parser.add_argument('--iou_thr', type=float, default=0.5)
@@ -54,7 +55,7 @@ def main():
     # load model
     from base import Demoer
     from utils.preprocessing import load_img, process_bbox, generate_patch_image
-    from utils.vis import render_mesh, save_obj
+    from utils.vis import render_mesh, save_obj, render_side_mesh
     from utils.human_models import smpl_x
     demoer = Demoer()
     demoer._make_model()
@@ -71,7 +72,10 @@ def main():
     model = init_detector(config_file, checkpoint_file, device='cuda:0')  # or device='cuda:0'
 
     for frame in tqdm(range(start, end)):
-        img_path = os.path.join(args.img_path, f'{int(frame):06d}.jpg')
+        # img_path = os.path.join(args.img_path, f'{int(frame):05d}' + '_00.bmp')
+        img_path = os.path.join(args.img_path, f'{int(frame):03d}' + '.png')
+        # img_path = os.path.join(args.img_path, f'{int(frame):03d}' + '.jpg')
+        print(img_path)
 
         # prepare input image
         transform = transforms.ToTensor()
@@ -102,6 +106,7 @@ def main():
             mmdet_box = non_max_suppression(mmdet_box[0], args.iou_thr)
             num_bbox = len(mmdet_box)
         
+        img_side_all = []
         ## loop all detected bboxes
         for bbox_id in range(num_bbox):
             mmdet_box_xywh = np.zeros((4))
@@ -158,8 +163,12 @@ def main():
             ## render single person mesh
             focal = [cfg.focal[0] / cfg.input_body_shape[1] * bbox[2], cfg.focal[1] / cfg.input_body_shape[0] * bbox[3]]
             princpt = [cfg.princpt[0] / cfg.input_body_shape[1] * bbox[2] + bbox[0], cfg.princpt[1] / cfg.input_body_shape[0] * bbox[3] + bbox[1]]
-            vis_img = render_mesh(vis_img, mesh, smpl_x.face, {'focal': focal, 'princpt': princpt}, 
-                                  mesh_as_vertices=args.show_verts)
+            # vis_img = render_mesh(vis_img, mesh, smpl_x.face, {'focal': focal, 'princpt': princpt}, 
+            #                       mesh_as_vertices=args.show_verts)
+            vis_img = render_mesh(vis_img, mesh, smpl_x.face, {'focal': focal, 'princpt': princpt}, mesh_as_vertices=args.show_verts)
+            if args.show_img_side:
+                vis_img_side = render_side_mesh(vis_img, mesh, smpl_x.face, {'focal': focal, 'princpt': princpt}, mesh_as_vertices=args.show_verts)
+                img_side_all.append(vis_img_side)
             if args.show_bbox:
                 vis_img = cv2.rectangle(vis_img, start_point, end_point, (255, 0, 0), 2)
 
@@ -182,6 +191,13 @@ def main():
         save_path_img = os.path.join(args.output_folder, 'img')
         os.makedirs(save_path_img, exist_ok= True)
         cv2.imwrite(os.path.join(save_path_img, f'{frame_name}'), vis_img[:, :, ::-1])
+
+        if args.show_img_side:
+            save_path_img_side = os.path.join(args.output_folder, 'img_side')
+            os.makedirs(save_path_img_side, exist_ok= True)
+            frame_index = frame_name.split('.')[0]
+            for img_side_id, img_side in enumerate(img_side_all):
+                cv2.imwrite(os.path.join(save_path_img_side, f'{frame_index}_{img_side_id}.png'), img_side[:, :, ::-1])
 
 
 if __name__ == "__main__":
